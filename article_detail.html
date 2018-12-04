@@ -1,0 +1,266 @@
+{% extends 'base.html' %}
+
+
+
+{% block content %}
+
+    {#{% csrf_token %}#}
+
+    <div>
+        <p><h4 class="text-center">{{ article.title }}</h4></p>
+        <div>
+            {{ article.content|safe }}
+        </div>
+        {#点赞#}
+        <div class="clearfix">
+            <div id="div_digg">
+                <div class="diggit action">
+                    <span class="diggnum" id="digg_count">{{ article.up_num }}</span>
+                </div>
+                <div class="buryit action">
+                    <span class="burynum" id="bury_count">{{ article.down_num }}</span>
+                </div>
+                <div class="clear"></div>
+                <div class="diggword" id="digg_tips" style="color: red;"></div>
+            </div>
+        </div>
+
+        {#评论#}
+        <div>
+            <ul class="list-group cotent_ul">
+                {% for content in content_list %}
+                    <li class="list-group-item">
+                        <p><span>#{{ forloop.counter }}楼</span>
+                            <span>{{ content.create_time|date:'Y-m-d H:i:s' }}</span>
+                            <span><a href="/{{ content.user.username }}">{{ content.user.username }}</a></span>
+                            <span class="pull-right replay" username="{{ content.user.username }}"
+                                  content_id="{{ content.pk }}">回复</span>
+                        </p>
+                        {% if content.parent %}
+                            {#content.parent 拿到的是什么? 拿到父评论的对象#}
+                            <p class="well">@{{ content.parent.user.username }}</p>
+
+                        {% endif %}
+                        {{ content.content }}
+                    </li>
+                {% endfor %}
+
+
+            </ul>
+        </div>
+        <div>
+            <p>发表评论</p>
+            <p>
+                昵称：<input type="text" id="tbCommentAuthor" class="author" disabled="disabled" size="50" value="刘清政">
+            </p>
+            <p>评论内容：</p>
+            <p>
+                <textarea name="" id="content" cols="60" rows="10">
+
+
+            </textarea>
+            </p>
+            <button class="btn btn-primary submit">提交</button>
+
+
+        </div>
+    </div>
+
+    <script>
+        //全局变量
+        var pid = ''
+        //评论相关(跟评论的方法)
+        /*
+        $('.submit').click(function () {
+            //评论要提交什么内容
+            //谁?又不需要传对哪篇文章评论了什么内容
+
+            var content = $("#content").val()
+            $("#content").val("")
+            $.ajax({
+                url: '/commit_content/',
+                type: 'post',
+                data: {
+                    'article_id': '{{ article.pk }}',
+                    'content': content,
+                    'pid': '',
+                    'csrfmiddlewaretoken': '{{ csrf_token }}'
+                },
+                success: function (data) {
+                    console.log(data)
+                    //拼  用户名:时间
+                    //    评论内容    这些数据都应该从后台返回
+                    var time=data.time
+                    var content=data.content
+                    var user_name=data.user_name
+                    var ss=`
+                      <li class="list-group-item">
+                        <p>
+                            <span>${ user_name }</span>:
+                            <span>${ time }</span>
+                        </p>
+                         ${content}
+                    </li>
+                    `
+                    $(".cotent_ul").append(ss)
+
+                }
+            })
+
+
+        })
+        */
+        //字评论和根评论
+        $('.submit').click(function () {
+            var content = $("#content").val()
+            $("#content").val("")
+
+            if (pid) {
+                //pid有值,才切掉头部
+                //拿到content要切的起始位置indexOf(),取到指定值的索引值
+                //取到 \n 索引位置的后一位
+                var index = content.indexOf('\n') + 1
+                alert(index)
+                //slice传一个起始位置,一个结束位置,就可以切出来
+                content = content.slice(index)
+            }
+
+
+            $.ajax({
+                url: '/commit_content/',
+                type: 'post',
+                data: {
+                    'article_id': '{{ article.pk }}',
+                    'content': content,
+                    'pid': pid,
+                    'csrfmiddlewaretoken': '{{ csrf_token }}'
+                },
+                success: function (data) {
+                    console.log(data)
+                    //拼  用户名:时间
+                    //    评论内容    这些数据都应该从后台返回
+                    var time = data.time
+                    var content = data.content
+                    var user_name = data.user_name
+                    var ss =''
+                    if (pid){
+                        //需要清空一下父评论的id
+                        pid=''
+                        var parent_name=data.parent_name
+                        ss=`
+                         <li class="list-group-item">
+                         <p>
+                         <span>${ user_name }</span>
+                            <span>${ time }</span>
+                        </p>
+                            <p class="well">@${parent_name }</p>
+                        ${content}
+                    </li>
+                        `
+                    }else {
+                         ss= `
+                      <li class="list-group-item">
+                        <p>
+                            <span>${ user_name }</span>:
+                            <span>${ time }</span>
+                        </p>
+                         ${content}
+                    </li>
+                    `
+                    }
+
+                    $(".cotent_ul").append(ss)
+
+                }
+            })
+        })
+        $(".replay").click(function () {
+
+            //拿到span标签中username属性对应的值
+            var username = $(this).attr('username')
+            //alert(username)
+            //把拼接的字符串放到content内,并且换行
+            $('#content').val('@' + username + '\n')
+            //让光标聚焦到这个控件
+            $('#content').focus()
+            //给pid赋值(pid是父评论的id)
+            pid = $(this).attr('content_id')
+
+
+        })
+        //点赞相关
+        $(".action").click(function () {
+            //判断当前点击的div控件,有没有diggit类
+            var is_up = $(this).hasClass('diggit')
+
+            var obj = $(this).children('span')
+            //alert(is_up)
+            $.ajax({
+                url: '/diggit/',
+                type: 'post',
+                //谁对哪篇文章,点赞
+                //谁,可以不传吗?从后台取
+                data: {article_id: '{{ article.pk }}', is_up: is_up, 'csrfmiddlewaretoken': '{{ csrf_token }}'},
+                success: function (data) {
+                    console.log(data)
+                    //在点赞下方显示信息提示
+                    $("#digg_tips").html(data.msg)
+                    if (data.status == 100) {
+                        //如果返回成功,点赞数或点踩数加1(第一种方案)
+                        /*
+                        if(is_up){
+                            //这个值是字符串
+                           var count= $("#digg_count").text()
+                            //把count转成int类型
+                            //这两种方式都可以
+                            //$("#digg_count").text(parseInt(count)+1)
+                            $("#digg_count").text(Number(count)+1)
+                        }else{
+                            var count= $("#bury_count").text()
+                            $("#bury_count").text(Number(count)+1)
+                        }
+                        */
+                        //第二种方案
+                        //ojb是当前点击div中的span标签,先取出span中的数字,+1,然后放到span中
+                        obj.text(Number(obj.text()) + 1)
+
+                    }
+
+
+                    //过三秒清除提示
+                    setTimeout(function () {
+                        $("#digg_tips").html("")
+                    }, 3000)
+
+                }
+            })
+
+        })
+        /*
+            $(".diggit").click(function () {
+
+
+            })
+
+            function test() {
+
+                $.ajax({
+                    url: '/diggit/',
+                    type: 'post',
+                    //谁对哪篇文章,点赞
+                    //谁,可以不传吗?从后台取
+                    data: {article_id: '{{ article.pk }}', is_up: true, 'csrfmiddlewaretoken': '{{ csrf_token }}'},
+                success: function (data) {
+                    console.log(data)
+
+                }
+            })
+
+        }
+        */
+
+
+    </script>
+
+
+{% endblock %}

@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="/static/bootstrap-3.3.7-dist/css/bootstrap.min.css">
+    <script src="/static/jquery-3.3.1.js"></script>
+    <title>登录</title>
+    <style>
+        .error{
+            margin-left: 20px;
+            color: red;
+        }
+    </style>
+</head>
+<body>
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-6 col-md-offset-3">
+            <h1>登录</h1>
+            {# label for="name"  如果指定某个id,这样点击这个label,焦点会到对应的控件上         #}
+            <form>
+                {% csrf_token %}
+                <div class="form-group">
+                    <label for="name">用户名</label>
+                    <input type="text" id="name" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label for="pwd">密码</label>
+                    <input type="password" id="pwd" class="form-control">
+                </div>
+                <div class="form-group">
+                    <label for="valid_code">验证码</label>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <input type="text" id="valid_code" class="form-control">
+                        </div>
+
+                        <img height="35" width="320" src="/get_valid_code/" alt="" id="img_code">
+                    </div>
+
+                </div>
+
+                <input type="button" value="登录" class="btn btn-primary " id="btn"><span class="error"></span>
+            </form>
+
+        </div>
+
+    </div>
+
+</div>
+</body>
+<script>
+    $("#img_code").click(function () {
+        //在路径后面加一个问号
+        //$("#img_code")[0].src+=?
+        // alert(11)
+        $("#img_code")[0].src += '?'
+    })
+    $("#btn").click(function () {
+        {#尽量少用这种#}
+        //var obj={{ dic }}
+        //console.log(typeof obj)
+        $.ajax({
+            url: '/login/',
+            type: 'post',
+            //一定要记住csrf
+            data: {
+                'name': $("#name").val(),
+                'pwd': $("#pwd").val(),
+                'valid_code': $("#valid_code").val(),
+                //属性选择器
+                'csrfmiddlewaretoken':$('[name="csrfmiddlewaretoken"]').val()
+                //'csrfmiddlewaretoken': '{{csrf_token}}',
+            },
+            success:function (data) {
+                console.log(data)
+                if(data.user){
+                    location.href='/index/'
+                }else{
+                    $(".error").html(data.msg)
+                }
+
+            }
+
+        })
+    })
+
+</script>
+</html>

@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="/static/bootstrap-3.3.7-dist/css/bootstrap.min.css">
+    <script src="/static/jquery-3.3.1.js"></script>
+    <title>注册</title>
+    <style>
+        {#        把文件空间隐藏#}
+        #my_file{
+            display: none;
+        }
+    </style>
+
+{#    <script>#}
+{#        //等文档加载完毕之后,再进行操作#}
+{#        window.onload = function () {#}
+{#            //$("#id_name").val('lqz')#}
+{#        }#}
+{##}
+{#    </script>#}
+</head>
+<body>
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-6 col-md-offset-3">
+            <h1>注册</h1>
+            <form id="form">
+                {% csrf_token %}
+
+                {% for foo in my_form %}
+                    <div class="form-group">
+                        <label for="{{ foo.auto_id }}">{{ foo.label }}</label>
+                        {{ foo }} <span class="error pull-right" style="color: red">{{ foo.errors.0 }}</span>
+                    </div>
+                {% endfor %}
+                {# 加一个上传文件的控件#}
+                <div class="form-group">
+                    <label for="my_file">头像
+                        <img src="/static/img/default.png" id="img_file" alt="" width="80" height="80"
+                             style="margin-left: 10px">
+                    </label>
+
+                    <input accept="image/*" type="file" id="my_file">
+                </div>
+
+
+                <input type="button" value="注册" class="btn btn-primary " id="btn"><span class="error"></span>
+            </form>
+
+        </div>
+
+    </div>
+
+</div>
+</body>
+<script>
+    //这个控件值发生变化的事件
+    $("#my_file").change(function () {
+        //alert(111)
+        //先取出文件(图片)
+        var file_obj = $("#my_file")[0].files[0];
+        //通过文件阅读器,把图片放到img标签上
+        //生成一个文件阅读器对象
+        var filereader = new FileReader()
+        //把图片对象,读到filereader对象中
+        filereader.readAsDataURL(file_obj)
+        //filereader.result 这是filereader对象的值
+        //把文件对象渲染到img标签上(这样不行.需要加载完成才能操作)
+        {#$("#img_file").attr('src', filereader.result)#}
+        {#alert(1)#}
+        //等加载完成,在操作
+        filereader.onload=function () {
+            $("#img_file").attr('src', filereader.result)
+        }
+
+
+    })
+
+    $("#btn").click(function () {
+        //因为要上传文件,生成formdata对象
+        var formdata=new FormData()
+        /*第一种方式
+        formdata.append('name',$("#id_name").val())
+        formdata.append('pwd',$("#id_pwd").val())
+        formdata.append('re_pwd',$("#id_re_pwd").val())
+        formdata.append('email',$("#id_email").val())
+        formdata.append('csrfmiddlewaretoken',$('[name="csrfmiddlewaretoken"]').val())
+        //把文件放到formdata中
+        formdata.append('my_file',$('#my_file')[0].files[0])
+        */
+        //$("#form").serializeArray()把form表单打包,转成对象(列表套字典)
+        var arr=$("#form").serializeArray()
+        //第二种方式
+        //jquery 的循环,传参数:第一个参数是要循环的对象,第二个参数是一个匿名函数
+        $.each(arr,function (key,obj) {
+            //obj对应的是:{name: "name", value: "sfdae"}
+            console.log(key)
+            console.log(obj)
+            formdata.append(obj.name,obj.value)
+        })
+       //把文件放到formdata中
+        formdata.append('my_file',$('#my_file')[0].files[0])
+        //console.log(formdata)
+        console.log(arr)
+
+        $.ajax({
+            url:'/register/',
+            type:'post',
+            //写什么来?
+            processData:false,
+            //默认urlencoded,还可以指定 application/json
+            contentType:false,
+            data:formdata,
+            //dataType:'json',
+            success:function (data) {
+                //console.log(data)
+
+                if(data.status==100){
+                    //location.href='/login/'
+                    location.href=data.url
+                }else{
+                    //在之前清除
+                    $(".form-group").removeClass('has-error')
+                     $(".error").html("")
+                    $.each(data.msg,function (key,value) {
+                        console.log(key,value)
+
+                       // $('[name='+key+']').
+                        //根据key,拼上id,通过id取出控件
+                        //原来取值
+                        //$("#id_username").next().html('sb')
+                        //取到下一个控件
+                        /*
+                        $("#id_"+key).next().html(value[0])
+                        取到父控件
+                        $("#id_"+key).parent().addClass('has-error')
+                        */
+                        //方式二
+                        //处理两次密码不一致的情况
+                        if(key=='__all__'){
+                            $("#id_re_password").next().html(value[0])
+                        }
+                        $("#id_"+key).next().html(value[0]).parent().addClass('has-error')
+
+                    })
+/*
+                    setTimeout(function () {
+                        //清除掉父div的has-error
+                        //清除掉错误信息(span中的内容)
+                        $(".form-group").removeClass('has-error')
+                        $(".error").html("")
+
+                    },3000)
+                    */
+                }
+
+            }
+        })
+
+    })
+
+
+    //name,发ajax的请求校验用户是否存
+    /*
+    $("#id_username").change(function () {
+        alert('change')
+    })
+    */
+    $("#id_username").blur(function () {
+        $.ajax({
+            url:'/check_username/',
+            type:'post',
+            //name加引号不加引号都可以
+            data:{name:$(this).val(),'csrfmiddlewaretoken':'{{ csrf_token }}'},
+            success:function (data) {
+                console.log(data)
+                if(data.status==101){
+                    $('#id_username').next().html(data.msg).parent().addClass('has-error')
+                }
+            }
+
+        })
+    })
+
+
+</script>
+
+{#    <script>#}
+{#        //等文档加载完毕之后,再进行操作#}
+{#        $("#id_name").val('lqz')#}
+{#    </script>#}
+</html>
